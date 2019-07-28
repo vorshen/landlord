@@ -1,0 +1,351 @@
+上篇回顾：我们说了斗地主游戏的**渲染展示部分**，最后也讲了下canvas中交互的情况，下篇的重点就是**游戏逻辑**。
+
+逻辑主要分成两块：流程逻辑和扑克牌对比逻辑。
+
+github地址：[https://github.com/vorshen/landlord](https://github.com/vorshen/landlord)
+
+![17张牌，你能秒我？](./img/1.png)
+
+# 流程逻辑
+### 分析
+这里流程上的逻辑分为两部分，一个是场景切换，还有一个就是房间页中游戏进行的流程
+
+先简单说下场景切换，我们这个斗地主游戏有如下三种场景切换
+1. 首页 -> 大厅页
+2. 大厅页 -> 房间页
+3. 房间页 -> 大厅页
+
+我们这里偷了懒，首页和大厅页没有用canvas，直接上了dom，写起来也很奔放，没有用框架。如果游戏想正式一点，千万不要这样。看起来首页和大厅页逻辑很简单，那是因为我们漏掉了很多点（真的是时间不够啊）。
+
+用一张图表现一下，我们漏掉的点：
+![demo和正式游戏的差异](./img/17.png)
+
+我们这么简单的情况下，如果说还有什么需要注意的，可能就两点
+
+#### 是否提前加载模块
+比如当我们进入首页的时候，要不要把大厅页和房间页都初始化完毕？
+
+这里我没有选择初始化，一定是真正使用到才会初始化。理由主要就是后面用到再初始化的开销并不大，可以接受。
+
+**如果当遇到，某一个场景很负责，切换需要较大的开销，可以考虑提前进行一些初始化的工作。**
+
+#### 销毁是真销毁还是隐藏
+大厅页和房间页存在来回切换的情况，当发生大厅切换到房间的时候，可以选择将大厅页隐藏，也可以选择将大厅页销毁，后面用到再初始化。
+
+这里我们选择只是将页面隐藏，也就是说当房间页第一次展示的时候，需要进行初始化（较大开销），以后再展示，就是很少的性能开销了。
+大概代码如下：
+```
+/**
+ * 房间展示，主要是生成stage
+ * @param info 
+ */
+private _show(info: i_RoomShowOptions) {
+    this._roomId = info.roomId;
+
+    if (this._inited) {
+        this._stage.show();
+    } else {
+        this._initStage();
+
+        this._inited = true;
+    }
+
+    ……
+}
+```
+
+具体代码在Hall.ts和Room.ts中
+
+因为我们页面简单而且小，常驻的话对性能影响不大，如果打算常驻的页面展示率低或者隐藏运行也很占用资源，那还是得把干掉。
+
+# 房间中流程
+### 消息驱动
+我们认为在房间中，流程的变化都是消息驱动，具体可以看下图：
+![房间中流程变化](./img/18.png)
+
+注意：右侧如果有箭头，意味着可能该阶段自己切换到该阶段（只是阶段主角发生变化）
+
+在每个阶段，前端只能有对应的操作。那么每个阶段的切换，该由谁驱动呢？写代码的时候，我发现可以有两种模式进行阶段切换。
+
+#### 前端控制
+以「叫地主阶段」->「抢地主阶段」为例，首先前端肯定知道游戏的轮转顺序（必须知道，因为布局就得考虑），轮转顺序是逆时针的。
+
+当服务器下发一条「xx叫地主的消息」后，前端可以知道
+1. 接下来要进行抢地主阶段了
+2. xx的下一个是yy
+
+那么前端可以主动将状态转为「yy进行抢地主状态」。
+
+这个没有问题，逻辑上也讲得通，而且乐观UI的思想，能让用户最快的感知到变化，理论上体验最佳。**甚至！可以节省与后台的传输，因为后台只需要下发「xx叫地主」，都不需要下发「yy进入到抢地主状态」了。**我代码也写了，写完发现了问题。
+
+「叫地主阶段」->「抢地主阶段」没问题，走的通；「抢地主状态」->「抢地主状态」也没问题，走得通；「抢地主阶段」->「出牌阶段」怎么办？
+
+我们可以在前端将每个玩家叫地主、抢地主的结果记录下来，然后保证和后端一样的逻辑，也可以得到这局游戏的地主是谁。但是地主获得的三张牌呢？这是一定要得从服务器获得的，出现了冲突，或者说前端无法完整实现的地方。
+
+更明显的还有「准备阶段」->「叫地主阶段」，前端完全不知道谁是叫地主的，因为这个可能不按轮转顺序来。
+
+到这里，**是不是我们也可以前端+后台配合的方式？**尝试了一下，并不好，这种组合的形式让代码变得难写，我不推荐这种方式。
+
+**不过也不敢保证，也许是我写法上的问题，如果对这里有建议和想法，可以一起讨论。**
+
+#### 后台控制
+所以我最后采用了后端精准控制的方式，一切都是以后台下发为准。
+
+我选择「叫地主」之后，理论上可以将前端状态转到「下个人抢地主」，但是并没有，我一定得等到后台状态变化的消息才进行转换。
+
+**注意：但是按钮，还是得提前反馈啊，否则网络延迟会让用户抓狂的。**
+
+所以房间逻辑这里，整个流程，是靠后台消息进行驱动的。代码大概：
+```
+private _addMessageListener() {
+    // 对手进入
+    this._app.network.addEventListener('Room.PlayerEnterRoom', this._playerEnterRoom);
+
+    // 对手离开
+    this._app.network.addEventListener('Room.PlayerLeaveRoom', this._playerLeaveRoom);
+
+    // 监听玩家准备
+    this._app.network.addEventListener('Room.PlayerReady', this._playerReady);
+
+    // 进入叫地主阶段
+    this._app.network.addEventListener('Room.EnterAskLandlord', this._enterAskLandlord);
+
+    // 对手叫地主
+    this._app.network.addEventListener('Room.PlayerAskLandlord', this._playerAskLandlord);
+
+    // 进入抢地主阶段
+    this._app.network.addEventListener('Room.EnterGrabLandlord', this._enterGrabLandlord);
+
+    // 对手抢地主
+    this._app.network.addEventListener('Room.PlayerGrabLandlord', this._playerGrabLandlord);
+
+    // 游戏开始
+    this._app.network.addEventListener('Room.GameStart', this._gameStart);
+
+    // 出牌
+    this._app.network.addEventListener('Room.PlayerShotPukes', this._playerPukes);
+
+    // 继续出牌
+    this._app.network.addEventListener('Room.LoopPukes', this._loopPukes);
+
+    // 游戏结束
+    this._app.network.addEventListener('Room.GameOver', this._gameOver);
+}
+```
+
+具体代码在Room.ts中
+
+### 客户端同步
+稍微延伸一下，刚刚说的那种情况，很类似游戏中，客户端同步的两种方式：帧同步和状态同步
+
+#### 帧同步(行为同步)
+帧同步的核心就是 不同的客户端 + 相同的输入（行为） = 相同的输出（状态）
+
+如果能一直保证这个公式成立，**那么服务器只需要推下发行为，无需下发状态**，行为的开销肯定远远小于状态，优势在于性能。这一般用于实时性要求高的游戏中，比如格斗类、fps类游戏。
+
+#### 状态同步
+状态同步就好理解了，客户端以服务器下发的状态为准，客户端就像一个播放器一样。这种优势在于服务器掌握绝对控制权，一般用于实时性要求不高的游戏中。
+
+# 与服务器对接
+游戏和传统web开发在网络上的差距也是很大的，传统web开发，资源加载完毕后，也就是cgi拉取一些数据或者上传一些数据会与后台对接，总而言之就是前端与后台的交流并不密切。
+
+但是游戏不一样，游戏是需要频繁交换数据的，而且必须要有后台主动推送的能力。斗地主这款游戏算是上行很少的游戏了，理论上其实cgi+长轮询也能满足我们的需求，但是现在websocket这么好用，不可能不用啊。
+
+### websocket
+websocket这里我们也是裸写的，没用开源的库，也没写重连啥的逻辑，**如果在线游戏想正规一点，一定要考虑重连啊。**
+
+如果还不了解websocket的同学，可以找介绍看下，很简单。
+
+但是websocket也有尴尬的地方，主要有两点：
+1. 下行消息一个通道，没有回调的概念
+2. 无法携带session
+
+先说1，我们用websocket进行send调用，调用就调用了，没有回调函数的概念的。后台如果想针对我们的请求进行回报，也得走统一的下发消息，对于前端来说，就是触发了onmessage。
+
+这样肯定是不行的，既然底层不支持，我们就得进行一次封装，其实核心就是版本号控制一下。
+
+原理如下图：
+![websocket实现回调](./img/19.png)
+
+我们发送消息的时候，如果有回调函数，就会记录一下（自增id标示），然后这个自增id会发送给后台。
+
+后台下发消息的时候，有两种，一种是带着回调id，如果发现是这种消息，就拿着id去回调函数池子里面找到对应的函数执行。如果没有回调id，意味着是单纯的推送，对应执行。
+
+大概代码，具体代码在Network.ts中
+```
+class Network extends EventDispatcher {
+    // 收到服务器下发消息
+    private _processMessage(msg: any) {
+        // response消息
+        if (msg.id) {
+            let cb = this._callbacks[msg.id];
+
+            delete this._callbacks[msg.id];
+            if (typeof cb !== 'function') {
+                console.error('callback is not a function for request: ', msg.id);
+                return;
+            }
+
+            cb(msg.body);
+
+            return;
+        }
+
+        // 服务器推送消息
+        let route = msg.route;
+
+        if (!route) {
+            console.error('no route in message');
+            return;
+        }
+
+        this.dispatchEvent(route, msg.data);
+    }
+
+    // 想服务器推送消息
+    notify(msg: any, callback?: Function) {
+        if (!this._ws) {
+            return;
+        }
+
+        if (typeof callback === 'function') {
+            msg.id = ++this._callbackIndex;
+
+            this._callbacks[msg.id] = callback;
+        }
+
+        this._ws.send(JSON.stringify(msg));
+    }
+```
+
+至于无法携带session，这个就没办法了，只能相当于每次手动将uid带上去，服务器会根据uid拿到用户信息。
+
+# 扑克牌对比逻辑
+到了斗地主最核心逻辑部分了，那就是扑克牌大小的对比，也是我们使用webassembly的地方。
+
+### webassembly
+对不了解webassembly的同学先简单介绍一下webassembly，可以理解为：将其他的语言（比如C++，go，java等）写的代码，跑在浏览器上。其他基础知识就不在这里提了哈，可以自行查阅。
+
+外界看好wasm的优势在于快！虽然js有v8，但是相比较那些静态语言老流氓们，还是有些差距的。目前wasm应用场景最多的应该在于音视频的解析、字符串操作、大量数学计算等一些高cpu操作上。
+
+我觉得wasm不仅仅有速度上的优势，还有**代码复用**这个被忽视的特性。在游戏上，这个特性帮助会很大。
+
+以我们这个斗地主为例，核心部分是扑克牌对比逻辑。这个逻辑，前端要用把，判断是否可以出牌的时候，如图
+![前端是否可以出牌](./img/20.png)
+
+**但是后端不能无脑信任前端的牌吧，后台也必须得校验一次。**一份逻辑，写一次总比写两次好吧，况且还是一个比较复杂的逻辑。wasm的出现解决了这种场景的痛点，主要也是游戏开发中，这种情况也比较多，很常见的就是碰撞检测。
+
+具体一份代码是怎么用的，我们稍后再说，我们先把扑克牌对比的逻辑用C++写出来，否则其他都是白搭。
+
+### 如何对比
+因为比较简单，我没有去网上搜实现，自己写了一套，目前看来应该没啥问题，是不是最优思想不清楚。原理如下
+
+我们先把扑克牌分类一下，如下图：
+![扑克牌类型](./img/20.png)
+
+```
+enum PukeType {
+    ERROR,    // 无法匹配
+    EMPTY,    // 空张
+    SINGLE,    // 单张
+    DOUBLE,    // 对子
+    THREE,    // 三不带
+    BOOM,    // 炸
+    THREE_SINGLE,    // 三带一
+    THREE_DOUBLE,    // 三带二
+    DOUBLE_ROW,    // 连对
+    THREE_ROW,    // 连三不带
+    THREE_SINGLE_ROW,    // 三带一飞机
+    THREE_DOUBLE_ROW,    // 三带二飞机
+};
+```
+
+这里「炸弹」是比较特殊的，因为**它可以和其他类型进行大小比对，其他类型，必须相同类型进行对比**，可以理解为对2也打不过一单张3
+
+因为类型多，看起来同类型对比复杂，其实并不是，因为同类型对比，核心比的是某一单张牌。
++ 3带1/2，比的是3张中的牌谁大
++ 连对，无论连了几对，比的是最大的那对中的牌谁大
++ 炸弹，其实比单张
++ 其他的就不罗列了，其实都是这样
+
+那么我们就可以这样
+1. 格式化传入的pukes
+2. 得到pukes的类型 和 这个类型下，能代表最大的那张牌
+3. 除了炸弹，如果类型对不上，认为比不过
+4. 类型一样，比核心牌
+
+代码如下，具体代码在puke-compare.h中
+```
+/**
+ * 对比两组牌的大小
+ */
+bool PukeCompare(std::vector<Puke>& pukesA, std::vector<Puke>& pukesB) {
+    // 先格式化两组牌
+    Parse(pukesA);
+    Parse(pukesB);
+    
+    // 分析牌的类型
+    PukeCompareResult bResult = GetCore(pukesB);
+    PukeCompareResult aResult = GetCore(pukesA);
+
+    // 不合法，直接认为出牌小
+    if (bResult.type == PukeType::ERROR) {
+        return false;
+    }
+
+    // 如果本身牌为空，则也认为出牌小
+    if (bResult.type == PukeType::EMPTY) {
+        return false;
+    }
+
+    // 对比的牌为空，则认为出牌大
+    if (aResult.type == PukeType::EMPTY) {
+        return true;
+    }
+    // 一方是炸弹，另一方不是炸弹
+    if (bResult.type == PukeType::BOOM && aResult.type != PukeType::BOOM) {
+        return true;
+    }
+
+    if (bResult.type != PukeType::BOOM && aResult.type == PukeType::BOOM) {
+        return false;
+    }
+
+    // 如果类型不一致，也认为小
+    if (bResult.type != aResult.type) {
+        return false;
+    } else {
+        // 类型一致，比核心牌
+        return (pukesB[bResult.core]) > (pukesA[aResult.core]);
+    }
+}
+```
+
+格式化牌和分析牌类型这两块，也不复杂，稍微有些细节，感兴趣的话可以看，代码都在puke-compare.h中
+
+### js调用c++函数
+代码写完了，服务器端ok了，我们就得让前端能跑起来C++的代码。借助emscripten，其实调用起来也挺方便的，这里没有时间和篇幅说具体怎么弄的，但可以说的抽象一些。
+
+js调用C++代码有两种方向
+
+一种是直接调用C++函数
+
+还有一种是在js环境下，new出C++对象，这个不好画图，我就不画了哈
+
+二者的区别主要也是写法上的区别，只调用函数的方式控制力较弱；new对象的方式，控制能力强，但是如果设计的不好，容易玩坏，而且麻烦些。
+
+注意要考虑垃圾回收，在js侧new出来的C++对象，v8可不会帮你垃圾回收，得自己实现一个简单的引用计数的垃圾回收。所以说，如果选择new对象的方式，一定要考虑周全。
+
+我们这里相当于两者结合使用了，毕竟本来就是为了练手，涉及到webidl相关的知识（将C++对象，转换为js可以理解的对象）。具体代码在assembly下puke.idl和my_glue_wrapper.cpp中
+
+webassembly这里，本来打算多写点，但是发现不好下手，如果写的详细，内容会较多。感觉又能开一篇文章了，但最近实在是比较忙，能抽出空写这两篇已经到极限了……不过现在网上webassembly相关的文章资料已经很多了，感兴趣的同学可以带着一起看，应该就很有助于理解了。
+
+# 思考
+写这个游戏期间，因为不同于平时业务开发，只考虑自己前端的那部分，这次从产品到前端后台都是一个人，有一些非前端的感触。
++ 产品流程图很重要，能提前理清楚一些逻辑坑点，防止无脑撸代码然后返工。这里吃了不少亏
++ 设计大大们是真的牛皮
++ 联调过程保证后端稳定性，尽量少改代码了，后台重新编译、重启的成本高很多
++ 时间关系，没有弄单元测试，但能准备单元测试，还是要准备，很重要
+
+# 结尾
+终于到结尾了，感谢阅读到这里的同学。这个游戏本来是一个无心之作，不过也起到了练手的作用。欢迎大家一起交流沟通～

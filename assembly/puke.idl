@@ -1,0 +1,42 @@
+enum puke_PukeColor {
+    "puke::GOLD",
+    "puke::BLACK_HEART",
+    "puke::RED_HEART",
+    "puke::BLACK_PLUM",
+    "puke::RED_RECT"
+};
+
+enum puke_PukeType {
+    "puke::ERROR",
+    "puke::SINGLE",
+    "puke::DOUBLE",
+    "puke::THREE",
+    "puke::BOOM",
+    "puke::THREE_SINGLE",
+    "puke::THREE_DOUBLE",
+    "puke::DOUBLE_ROW",
+    "puke::THREE_ROW",
+    "puke::THREE_SINGLE_ROW",
+    "puke::THREE_DOUBLE_ROW"
+};
+
+typedef unsigned short PukeAmount;
+
+typedef unsigned long PukeSerial;
+
+interface JSPuke {
+    void JSPuke([Const] puke_PukeColor color, [Const] PukeSerial serial);
+    [Const] puke_PukeColor color();
+    [Const] long serial();
+
+    boolean Equal([Const, Ref] JSPuke a);
+    boolean Less([Const, Ref] JSPuke a);
+    boolean More([Const, Ref] JSPuke a);
+    void AddRef();
+    void Release();
+
+    [Const] DOMString Name();
+
+    readonly attribute puke_PukeColor color_;
+    readonly attribute long serial_;
+};
