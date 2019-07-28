@@ -1,0 +1,47 @@
+.hall-box {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.hall-create-button {
+    width: 150px;
+    height: 40px;
+    position: absolute;
+    left: 25%;
+    top: 70%;
+    transform: translateX(-75px);
+    text-align: center;
+    line-height: 40px;
+    background-color: #1ca4fc;
+    color: #ffffff;
+    font-size: 20px;
+}
+
+.hall-rid-input {
+    position: absolute;
+    border: 2px solid #1ca4fc;
+    height: 30px;
+    line-height: 30px;
+    left: 75%;
+    top: 70%;
+    transform: translate(-75px, -50px);
+    width: 150px;
+    box-sizing: border-box;
+    font-size: 22px;
+    outline: none;
+}
+
+.hall-enter-button {
+    width: 150px;
+    height: 40px;
+    position: absolute;
+    left: 75%;
+    top: 70%;
+    transform: translateX(-75px);
+    text-align: center;
+    line-height: 40px;
+    background-color: #1ca4fc;
+    color: #ffffff;
+    font-size: 20px;
+}

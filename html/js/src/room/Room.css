@@ -1,0 +1,5 @@
+.room-box {
+    position: relative;
+    transform-origin: left top;
+    background-color: #ffffff;
+}

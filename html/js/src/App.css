@@ -1,0 +1,28 @@
+.index-box {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.index-resource-progress {
+    height: 6px;
+    background-color: #1ca4fc;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.index-start-button {
+    width: 150px;
+    height: 40px;
+    position: absolute;
+    left: 50%;
+    top: 70%;
+    transform: translateX(-75px);
+    text-align: center;
+    line-height: 40px;
+    background-color: #1ca4fc;
+    color: #ffffff;
+    font-size: 20px;
+    display: none;
+}

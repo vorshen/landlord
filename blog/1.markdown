@@ -1,0 +1,359 @@
+背景：朋友来深圳玩，若说到在深圳有什么好玩的，那当然是宅在家里斗地主了！可是天算不如人算，扑克牌丢了几张不全……大热天的，谁愿意出去买牌啊。不过问题不大，作为移动互联网时代的程序猿，当然是撸一个手机在线斗地主来代替实体牌了。
+
+github地址：
+
+阅读前注意：
+本文分为上下两篇，本篇讲准备工作以及前端一些布局相关的知识；下一篇讲webassembly实现核心逻辑和server端相关。
+**由于源码在github上全部都有，所以文章更偏向于思路的讲解。**
+业余时间有限，游戏样式丑= =，有些细节也没打磨，敬请谅解。不过还是达到了闭环，线下开黑娱乐应该没有问题。
+
+![17张牌，你能秒我？](./img/1.png)
+
+# 准备
+### 技术选型与准备
+typescript + canvas + webassembly + c++(server)
+首先肯定是Web的，人齐有个局域网server端启动，然后QQ、微信、浏览器访问，直接就开干了啊。既然是Web的，那必须是typescript啊，我觉得写过ts的，这辈子应该不会再想写js了吧……
+
+斗地主作为一个元素不多、没炫酷场景的游戏，其实dom完全可以吃得住。但是做个Web游戏，不用个canvas作为舞台，总感觉哪里不对劲。所以最终我们还是用canvas来渲染。这里我们就没有用成熟的渲染引擎了，锻炼锻炼自己。
+
+既然作为练手作品，总要折腾点，webassembly作为目前很火的技术，我们当然要尝试一下啦，所以游戏的一些核心逻辑采用了webassembly实现，这里会在下一篇详细讲解。
+
+### 编码前
+既然是自己从零到一，产品设计开发都得是自己，我们先简单梳理一下游戏的流程。我们这个斗地主不同于QQ斗地主，QQ斗地主是随机进入房间，无法开黑。而我们追求的是一起玩，所以游戏房间的概念是一大不同。
+
+简单列了一下我们游戏的流程：
+1. 快速进入，即开即玩，无需注册
+2. 创建房间或搜索加入房间
+3. 进入房间之后，传统的斗地主逻辑
+
+传统的斗地主逻辑如下：
+![传统斗地主逻辑](./img/2.png)
+
+虽然这里贴出来了，但自己真正开始写的时候，压根没梳理，就是一把梭，上来就撸码。结果发现了不少逻辑上的冲突点和细节点，斗地主看起来是一个小游戏，不过逻辑还蛮复杂的，再加上在线非单机，完全低估了游戏的复杂度，一把辛酸泪……
+
+设计没啥好说的，从网上找了几个图就当作基本的元素了（难看就难看了……没办法）
+
+下面就正式开始了
+
+# 布局
+### 横屏
+首先斗地主这个游戏是横屏的，这个蛋疼了，因为web对横屏的控制太弱了一点。我们无法强制横版，全部依赖系统的行为。
+既然横屏限制多不好用，那么我们能不能直接用竖屏来模拟横屏呢？也就是手机保持竖屏状态，然后我们整个页面旋转一下，就模拟了竖屏了，写样式布局啥的，完全可以按照横屏的来写，还是挺方便的。
+原理如下：
+![模拟横屏的原理](./img/3.png)
+```
+let width = this._app.root.offsetWidth;
+let height = this._app.root.offsetHeight;
+
+this._box = document.createElement('div');
+this._box.className = 'room-box';
+// 宽高反转
+this._box.style.width = `${height}px`;
+this._box.style.height = `${width}px`;
+this._box.style.transform = `translateX(${width}px) rotate(90deg)`;
+```
+注意！这样的横屏，会导致无法直接使用点击事件的clientX/Y，这里也需要有一步转换，具体代码在Stage.ts中，这里不再展开。
+
+不过这种方案在模拟器上看起来没啥问题，真机上还是有缺陷的，就是标题栏的问题，如图
+![标题栏无法横过来](./img/4.png)
+
+不过我觉得这个还行，无伤大雅，所以就采取了这种方式
+
+### 适配
+游戏分为三个场景页面：首页，大厅页，房间页。其中房间页就是对战相关，最为复杂，这里就以房间页来说。下面是经典的QQ斗地主的房间页：
+![QQ斗地主](./img/5.png)
+
+我们大致划分一下模块，如图所示：
+![QQ斗地主，模块分析](./img/6.png)
+
+不考虑细节的情况下还是比较简单的，可以看出，主要就是六大区域：
+1. 顶部信息展示区
+2. 底部信息展示区
+3. 左侧玩家区域
+4. 右侧玩家区域
+5. 主视角玩家区域
+6. 特效区域
+
+我们这就不考虑出牌特效啥的了（找几个基础的素材就要了我命了），如果用dom实现，那直接flex就安排的明明白白，如下（只是举例子，没有用前面横屏的方式）
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title></title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        .root {
+            height: 100%;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .top-area {
+            height: 45px;
+            background-color: #1ca4fc;
+
+            display: flex;
+            flex-grow: 0;
+        }
+        .side-player {
+            height: 125px;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            flex-grow: 1;
+        }
+        .left-player {
+            width: 266px;
+            background-color: #f7b92b;
+
+            display: flex;
+        }
+        .right-player {
+            width: 266px;
+            background-color: #f7b92b;
+
+            display: flex;
+        }
+        .main-player {
+            height: 187.5px;
+            background-color: #fc6554;
+
+            display: flex;
+            flex-grow: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="root">
+        <div class="top-area"></div>
+        <div class="side-player">
+            <div class="left-player"></div>
+            <div class="right-player"></div>
+        </div>
+        <div class="main-player"></div>
+    </div>
+</body>
+</html>
+```
+![如果用flex实现](./img/7.png)
+
+但是，我们使用canvas渲染，这里就有了一个问题：不同屏幕尺寸的适配怎么办？
+这里有两种大的考虑方向：
+1. canvas模拟弹性布局
+2. 缩放解决
+
+###### canvas模拟弹性布局
+众所周知我们用原生canvas接口，绘制元素，都是用绝对定位的形式，不支持flex。看了下业界一些游戏渲染引擎，alloyrender、erget、easelJS也都是用x，y坐标控制显示对象的位置
+我的理解是既然你采用canvas了，自然是会出现频繁重绘，弹性布局更偏向于静止的页面场景，对于游戏上需求不大，没必要花大功夫吃力不讨好。不过我们这个斗地主是一个偏页面静止的游戏，感兴趣的同学可以尝试尝试，针对上面那五个模块用固定大小+百分比的方式来实现一下弹性布局。由于时间和篇幅关系，这里就不贴效果图和代码了
+
+这种方式的优势是可以把屏幕使用率拉满，也不会有变形；劣势就是太麻烦了，光是这五个区域的布局还好，但是还涉及到区域里面细节的时候，实在是hold不住了，所以我最终也没有采用这种方式。如果有那些简单的布局场景，还是可以试试。
+
+###### 缩放解决
+看名字就知道是采用「缩放」来抹平不同屏幕尺寸的差异了。怎么缩放，也是有很多种方案，我罗列两个我觉得比较好的，应该也是用的比较多的
+1. 全部展示+黑边
+2. 核心展示+无黑边
+
+两者的原理如下所示：
+![全部展示+黑边](./img/8.png)
+![核心展示+无黑边](./img/9.png)
+
+二者的针对的场景也不太相同
+「全部展示+黑边」：所有内容都必须展示出来，黑边可以用大背景掩盖住
+「核心展示+无黑边」：整个舞台可以很大，用户只需要聚焦核心区域
+
+综上所述，我们肯定要采用的是第一种方式了
+
+# 渲染
+整个页面不是很复杂，为了练手，我们也没有用业界成熟的渲染引擎。但是总不能用canvas原生的写法，所以首先我们封装了几个基础的组件
++ DisplayObject 显示对象基类，只要对象要显示，一定要继承该类
++ Container 容器类
++ Bitmap 位图类
++ Text 文本类
+
+以上是这次游戏中需要用到的渲染相关的基类，我们具体的展示对象（扑克牌），或者容器（手牌）都是继承它们，再进行一些扩充。具体的代码github上都能看到。
+下面用张图表示一下整个项目中组件情况
+![项目中组件情况](./img/10.png)
+
+这里假设我们要正式开发一个游戏，借助渲染引擎，意味着不需要考虑base部分了。那么大概流程是如下的。
+1. 我们要先规划出场景，确定有几个场景。
+2. 针对1中的场景，确定每个场景有哪些基于base的上层组件
+3. 组件抽象复用性判断（不同场景类似的组件，是不是可以抽象成一个）
+4. 工具库、第三方库确定
+流程基本上就是如此。
+
+这里我们用页面上最重要的一个组件为例，讲一下
+BasePukesContainer是非常重要的一个组件，如其名，它是负责扑克牌展示的。玩家的手牌（HandPukes）、玩家出的牌（DesktopPukes）都是继承于它，所以BasePukesContainer抽象就很重要了
+首先，我们确定下BasePukesContainer作为一个扑克牌展示承载容器，需要哪些方法
+1. 能带着扑克牌（子元素）展示
+2. 能批量的增删扑克牌
+3. 扑克牌的支持多种对齐方式、多行展示等
+列个图，看了BasePukesContainer已有的，和需要补充的
+![BasePukesContainer分析](./img/11.png)
+红色部分是目前继承base下来缺失的，那么我们就要扩充
+最终代码如此（完整源码看github）
+```
+class BasePukesContainer extends Container {
+    // 扑克牌宽度
+    protected _pukeWidth: number;
+    // 扑克牌高度
+    protected _pukeHeight: number;
+    // 扑克牌水平对齐方式
+    protected _horizontalAlign: PUKE_HORIZONTAL_ALIGN;
+    // 扑克牌垂直对齐方式
+    protected _verticalAlign: PUKE_VERTICAL_ALIGN;
+    // 扑克牌之间两两的覆盖大小
+    private _interval: number;
+
+    /**
+     * 移除某张扑克牌
+     * @param {*} object 
+     */
+    protected _deletePuke(object: BasePuke) {}
+
+    /**
+     * 加入单张扑克牌
+     * @param {*} puke 
+     */
+    protected _postPuke(puke: BasePuke, zIndex?: number) {}
+
+    /**
+     * 触发更新维护的扑克牌的位置
+     */
+    protected _updatePukes() {}
+
+    constructor(options: i_BasePukesContainerOptions) {}
+
+    /**
+     * 移除部分扑克牌
+     * @param {string[]} pukes
+     */
+    deletePukes(pukes: string[]) {}
+
+    /**
+     * 添加部分扑克牌
+     * @param {string[]} pukes
+     */
+    postPukes(pukes: string[]) {}
+
+    /**
+     * 删除所有牌
+     */
+    deleteAll() {}
+}
+```
+渲染引擎的组件和使用思想都讲完了，当然细节和基础组件肯定远远不止这些，比如动画、粒子等等，感兴趣的可以看下业界渲染引擎的源码，带着理解去读，应该还是挺易懂的。
+
+# 交互
+静态渲染相关的都讲完了，下面我们说说游戏开发中的交互
+
+### 问题
+扑克牌排列渲染好了，玩家得出牌啊，touchstart和touchmove都应该触发选牌。问题是canvas不是dom，不管展示啥，理论上要不是fill出来的，要不然是stroke出来的，都没法绑定交互事件啊。
+
+其实这个问题也不算是问题了，基本上大家应该都知道解决方案。
+虽然fill出来的东西我们无法绑定事件，但是，我们可以给canvas标签绑上事件啊。然后根据event的clientX/Y相对于canvas的位置，找到对应渲染的元素啊。
+具体原理如下
+![Canvas中点击判断](./img/12.png)
+(x3, y3)就是clientX/Y
+它是全局坐标，我们先减去(x1, y1)，得到相对于canvas舞台的坐标(x', y')
+此时一切都是相对于canvas舞台的坐标系了，我们用(x', y')去和[x2, y2, w, h]这个矩形对比，判断点在不在矩形中，如果在，就意味着点击到了元素
+
+
+如果页面比较简单，确实解决了。然后有些事情并非那么简单……
+
+###### 元素重叠
+![元素重叠](./img/13.png)
+有两个元素（扑克）存在重叠，玩家点击在了重叠的区域，该如何响应？
+
+###### 组件嵌套
+![组件嵌套](./img/14.png)
+刚刚只有两个坐标系，屏幕坐标系和canvas坐标系，如果再引入一个container呢，是不是又多了一个相对坐标？茫茫无尽的嵌套，该怎么办呢？
+
+###### 不规则图形
+![不规则图形](./img/15.png)
+一个点是否在矩形中，很好判断；是否在圆中，也好判断，但如果是不规则图形呢？
+
+### 解决
+针对元素重叠，首先我们肯定是不能触发层级低元素的点击事件的，那么就是我们判断点是否在矩形中的时候，一定要按顺序来。正好Container也保证了这个顺序，代码类似如下。
+```
+/**
+ * touchstart，touchmove的时候触发
+ */
+private _touch = (data: { x: number, y: number }) => {
+    let {
+        x, y
+    } = data;
+    let len = this._children.length;
+    let i;
+    let temp: BasePuke;
+    let puke: BasePuke | undefined;
+
+    for (i = len - 1; i >= 0; i--) {
+        temp = <BasePuke>this._children[i];
+        if (temp.contain(x, y)) {
+            puke = temp;
+            break;
+        }
+    }
+
+    if (puke) {
+        this._choosePuke(puke);
+    }
+}
+```
+
+组件嵌套就稍微麻烦了些，这里的核心冲突是鼠标点击的位置是绝对坐标，而canvas舞台里面的元素，都是相对坐标。要对比的话，要么将绝对坐标转为相对的，要么把相对的转成绝对坐标。
+这里我们采用的是将绝对坐标转为相对的，比如当点击坐标为(x1, y1)时，需要判断是否点击中了[x2, y2, w, h]这个矩形（注意：这个x2, y2是经过层层嵌套的）
+我们就需要求出(x1, y2)这个全局坐标，转换到(x2, y2)坐标系的矩阵，然后变化一下即可
+代码如下：
+```
+// DisplayObject.ts
+/**
+ * 判断是否在AABB中
+ * 注意，这里x，y是global的坐标，没有经过transform
+ * 所以要进行逆矩阵计算
+ * @param {*} x 
+ * @param {*} y 
+ */
+contain(x: number, y: number) {
+    let point = new Point(x, y);
+    let matrix: Matrix2D;
+
+    // 先求出完整的矩阵
+    if (this._parent) {
+        matrix = this._parent._getGlobalMatrix();
+    } else {
+        matrix = new Matrix2D();
+    }
+
+    // 再求逆矩阵
+    matrix.invert();
+    
+    // 点进行矩阵变换
+    point.transformWithMatrix(matrix);
+
+    let rect = this._getAABB();
+
+    return rect.contains(point);
+}
+```
+变化矩阵就是根据需要判断的元素，先获取其全局的变换矩阵，然后求逆矩阵即可。如果了解矩阵的同学，应该很好理解，不了解的同学，可以查阅一下相关资料，这里篇幅原因，就不详细说明了。
+绝对转相对是如此的，相对转绝对也是类似的做法。
+
+最后一个就是不规则图形，规则图形我们都可以用几何法甚至代数法判断其是否在元素内部，其实判断的核心在于「边」。但是不规则图形，单纯的想用「边」的方式来判断，太难了，所以就有了像素级别的判断法：反画家算法。还是篇幅问题，这里不进行展开，感兴趣的同学自行查阅（我们这个斗地主游戏也没有使用）。
+
+# 总结
+到这里，上文就要结束了。我们从需求开始分析，将游戏中展示相关的工作都准备完毕，解决了横屏问题，自己封装了个简易的渲染引擎，确定好了上层组件，也准备好了交互手势，可以说非逻辑部分都已经搞定了，已经可以单机展示出来了。
+
+那么该如何接收他人消息？游戏的同步是什么样的？用户进出房间有什么注意事项？出牌核心逻辑部分该如何编写？Webassembly用在了哪里，如何使用？
+
+敬请期待下篇。

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimal-ui,user-scalable=no,viewport-fit=cover">
+    <title>斗地主</title>
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .root {
+            width: 100%;
+            height: 100%;
+            background-image: url("./img/bg.png");
+            background-repeat: no-repeat;
+        }
+    </style>
+</head>
+<body>
+    <div class="root"></div>
+    <script src="./js/puke.out.js"></script>
+    <script src="./js/dev/bundle.js"></script>
+    <script src="./js/lib/vconsole.min.js"></script>
+    <script>
+        // var vConsole = new VConsole();
+        
+        Module.onRuntimeInitialized = function() {
+            console.log('wasm 初始化完毕');
+            window.start();
+    	};
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+.vscode/
+node_modules
+assembly/WebIDLGrammar.pkl
+assembly/puke.idl
+assembly/parser.out

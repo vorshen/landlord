@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title></title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        .root {
+            height: 100%;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .top-area {
+            height: 45px;
+            background-color: #1ca4fc;
+
+            display: flex;
+            flex-grow: 0;
+        }
+
+        .side-player {
+            height: 125px;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            flex-grow: 1;
+        }
+
+        .left-player {
+            width: 266px;
+            background-color: #f7b92b;
+
+            display: flex;
+        }
+
+        .right-player {
+            width: 266px;
+            background-color: #f7b92b;
+
+            display: flex;
+        }
+
+        .main-player {
+            height: 187.5px;
+            background-color: #fc6554;
+
+            display: flex;
+            flex-grow: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="root">
+        <div class="top-area"></div>
+        <div class="side-player">
+            <div class="left-player"></div>
+            <div class="right-player"></div>
+        </div>
+        <div class="main-player"></div>
+    </div>
+</body>
+</html>
