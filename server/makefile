@@ -13,6 +13,6 @@ $(ACTIVE)/service/room/Room.cpp\
 $(ACTIVE)/service/room/RoomService.cpp\
 $(ACTIVE)/service/session/SessionService.cpp\
 
-a.out: $(OBJECTS)
-	rm -rf a.out
+server.out: $(OBJECTS)
+	rm -rf server.out
 	$(CXX) $(OPTS) -o $@ $(OBJECTS)
