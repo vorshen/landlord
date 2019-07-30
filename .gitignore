@@ -3,3 +3,4 @@ node_modules
 html/js/dev
 assembly/WebIDLGrammar.pkl
 assembly/parser.out
+package-lock.json

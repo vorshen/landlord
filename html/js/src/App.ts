@@ -4,7 +4,8 @@ import Room from "./room/Room";
 import Hall from "./hall/Hall";
 import { RET_SUCCESS } from "./utils";
 import './App.css';
-import ResourceConfig from "./resource.json";
+import ResourceConfig from "./config/resource.json";
+import NetworkConfig from "./config/network.json";
 import ResourceManage from "./render/ResourceManage";
 
 interface i_AppOptions {
@@ -92,8 +93,8 @@ class App {
         this._root = options.root;
         
         this.network = new Network({
-            host: '10.66.121.41',
-            port: 7999
+            host: NetworkConfig.host,
+            port: NetworkConfig.port
         });
 
         this._init();
