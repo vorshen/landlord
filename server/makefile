@@ -17,6 +17,6 @@ $(ACTIVE)/service/room/Room.cpp\
 $(ACTIVE)/service/room/RoomService.cpp\
 $(ACTIVE)/service/session/SessionService.cpp\
 
-server: $(OBJECTS)
-	rm -rf server
-	$(CXX) $(OPTS) -o $@ $(OBJECTS)
+server.out: $(OBJECTS)
+	rm -rf server.out
+	clang++ $(OPTS) -o $@ $(OBJECTS)
