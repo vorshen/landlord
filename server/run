@@ -1,1 +1,0 @@
-rm -rf ./a.out && clang++ -std=c++11 -I/Users/vorshen/C++/20190329-webserver/server/common ./server/main.cpp ./server/server.cpp ./common/mongoose.c ./room/room.cpp ./player/player.cpp ./game/game.cpp ./pukeCenter/pukeCenter.cpp ./pukeCenter/puke.cpp

@@ -1,7 +1,7 @@
 ACTIVE = .
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MKFILE_DIR := $(dir $(MKFILE_PATH))
-INCLUDE_PATH := ${MKFILE_DIR}common
+INCLUDE_PATH := $(MKFILE_DIR)common
 
 OPTS = -std=c++11 -I${INCLUDE_PATH}
 
@@ -17,6 +17,6 @@ $(ACTIVE)/service/room/Room.cpp\
 $(ACTIVE)/service/room/RoomService.cpp\
 $(ACTIVE)/service/session/SessionService.cpp\
 
-server.out: $(OBJECTS)
-	rm -rf server.out
+server: $(OBJECTS)
+	rm -rf server
 	$(CXX) $(OPTS) -o $@ $(OBJECTS)
