@@ -1,6 +1,7 @@
 #ifndef ERROR_CODE_H
 #define ERROR_CODE_H
 
+#include "../config.h"
 #include <fstream>
 #include <iostream>
 #include "../../common/nlohmann/json.hpp"
@@ -21,7 +22,8 @@ enum class ErrorCodeType {
 class ErrorCode {
     public:
         ErrorCode() {
-            std::ifstream i("/Users/vorshen/C++/20190329-webserver/server/base/error/config.json");
+            std::string path(__CONFIG_PATH__);
+	        std::ifstream i(path + "error-code.json");
             
             i >> error_data_;
 

@@ -2,8 +2,9 @@ ACTIVE = .
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MKFILE_DIR := $(dir $(MKFILE_PATH))
 INCLUDE_PATH := $(MKFILE_DIR)common
+CONFIG_PATH := $(dir $(MKFILE_DIR)../config/)
 
-OPTS = -std=c++11 -I${INCLUDE_PATH}
+OPTS = -D __CONFIG_PATH__=\"$(CONFIG_PATH)\" -std=c++11 -I${INCLUDE_PATH}
 
 OBJECTS += \
 $(ACTIVE)/main.cpp \

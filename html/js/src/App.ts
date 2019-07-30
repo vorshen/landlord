@@ -5,8 +5,8 @@ import Hall from "./hall/Hall";
 import { RET_SUCCESS } from "./utils";
 import './App.css';
 import ResourceConfig from "./config/resource.json";
-import NetworkConfig from "./config/network.json";
 import ResourceManage from "./render/ResourceManage";
+import DefaultConfig from "../../../config/default.json";
 
 interface i_AppOptions {
     root: HTMLDivElement;
