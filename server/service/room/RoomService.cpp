@@ -7,7 +7,7 @@ namespace room {
 
 // 随机房间id
 int RandomRoomId() {
-    std::srand((std::time(nullptr)));
+    std::srand((time(nullptr)));
 
     return (std::abs(std::rand()) + 1000) % 1000;
 }
