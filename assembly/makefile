@@ -1,5 +1,8 @@
 ACTIVE = .
-OPTS = -I. -I/Users/vorshen/C++/20190329-webserver/server/ -std=c++11 -O0 -g2
+MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+MKFILE_DIR := $(dir $(MKFILE_PATH))
+OPTS = -I. -I${MKFILE_DIR} -std=c++11 -O0 -g2
+
 PYTHON = $(ENV) python
 
 all: puke.out.js

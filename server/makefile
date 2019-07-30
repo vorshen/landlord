@@ -1,5 +1,9 @@
 ACTIVE = .
-OPTS = -std=c++11 -I/Users/vorshen/C++/20190329-webserver/server/common
+MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+MKFILE_DIR := $(dir $(MKFILE_PATH))
+INCLUDE_PATH := ${MKFILE_DIR}common
+
+OPTS = -std=c++11 -I${INCLUDE_PATH}
 
 OBJECTS += \
 $(ACTIVE)/main.cpp \
