@@ -93,8 +93,8 @@ class App {
         this._root = options.root;
         
         this.network = new Network({
-            host: NetworkConfig.host,
-            port: NetworkConfig.port
+            host: DefaultConfig.host,
+            port: DefaultConfig.port
         });
 
         this._init();
