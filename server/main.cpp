@@ -16,7 +16,7 @@ auto errorCode = std::shared_ptr<error::ErrorCode>(new error::ErrorCode);
 
 int main(int argc, char *argv[]) {
 	std::string path(__CONFIG_PATH__);
-	std::ifstream i(path + "default.json");
+	std::ifstream i("../config/default.json");
     
 	nlohmann::json defaultConfig;
 

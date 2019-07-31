@@ -22,8 +22,10 @@ enum class ErrorCodeType {
 class ErrorCode {
     public:
         ErrorCode() {
-            std::string path(__CONFIG_PATH__);
-	        std::ifstream i(path + "error-code.json");
+            // fix absolute path bug
+	        // if use absolute path, must recompile
+            // std::string path(__CONFIG_PATH__);
+	        std::ifstream i("../config/error-code.json");
             
             i >> error_data_;
 
