@@ -12,6 +12,7 @@ sudo ln -s ${绝对路径}/html /Library/WebServer/Documents/${目录名}/
 ```
 
 其实就是能通过WebServer的方式访问到html下的index.html即可
+**注意，这里前端的端口号，不要和gameserver的一样（gameserver的在default.json中配置）**
 
 ### 2.修改访问地址和端口
 ```
