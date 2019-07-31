@@ -41,7 +41,7 @@ cd server
 重新编译
 ```
 cd server
-rm server
+rm server.out
 make
 ./server.out
 ```
