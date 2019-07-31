@@ -43,7 +43,7 @@ cd server
 cd server
 rm server
 make
-./server
+./server.out
 ```
 
 必须用clang构建
