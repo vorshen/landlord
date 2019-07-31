@@ -126,8 +126,6 @@ class App {
     
         if (result.retcode === RET_SUCCESS) {
             console.log('登录成功: ', result);
-
-            this.enterHall();    
         } else {
             console.error('登录异常');
         }
